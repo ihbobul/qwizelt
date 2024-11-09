@@ -1,20 +1,21 @@
+import { UserService } from './../user/user.service';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
+import { CreateUserDto } from 'src/user/dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
-  private users = [];
+  constructor(private userService: UserService) {}
 
-  register(createAuthDto: CreateAuthDto) {
-    const { email, password } = createAuthDto;
+  async register(createUserDto: CreateUserDto) {
+    const { email, password } = createUserDto;
 
-    const userExists = this.users.some((user) => user.email === email);
+    const userExists = await this.userService.findByEmail(email);
 
     if (userExists) {
       throw new BadRequestException('Email already in use.');
     }
 
-    this.users.push({ email, password });
+    await this.userService.create(email, password);
 
     return {
       message: 'User registered successfully!',

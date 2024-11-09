@@ -1,7 +1,5 @@
 Feature: User Registration
-  As a user
-  I want to register on the website
-  So that I can access the website's features
+  As a user I want to register on the website so that I can access the website's features
 
   Scenario: Successful Registration
     Given I have a valid email and password
