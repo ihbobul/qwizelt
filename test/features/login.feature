@@ -11,3 +11,8 @@ Feature: User Login
     Given I have invalid credentials
     When I send a login request with those credentials
     Then I should receive an error message indicating invalid credentials
+
+  Scenario: User can refresh access token with refresh token
+    Given I have a valid refresh token
+    When I send a refresh token request
+    Then I should receive a new access token and refresh token

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { AppModule } from 'src/app.module';
 import { UserService } from 'src/user/user.service';
@@ -11,7 +12,8 @@ let userService: UserService;
 let response: request.Response;
 let email: string;
 let password: string;
-let token: string;
+let accessToken: string;
+let refreshToken: string;
 let userId: number;
 
 beforeAll(async () => {
@@ -49,14 +51,16 @@ defineFeature(feature, (test) => {
 
     then('I should receive a JWT token', () => {
       expect(response.status).toBe(200);
-      expect(response.body.token).toBeDefined();
-      token = response.body.token;
+      expect(response.body.accessToken).toBeDefined();
+      expect(response.body.refreshToken).toBeDefined();
+      accessToken = response.body.accessToken;
+      refreshToken = response.body.refreshToken;
     });
 
     then('I should be able to access protected resources', async () => {
       const protectedResponse = await request(app.getHttpServer())
         .get(`/user/${userId}`)
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${accessToken}`);
 
       expect(protectedResponse.status).toBe(200);
     });
@@ -81,5 +85,27 @@ defineFeature(feature, (test) => {
         expect(response.body.message).toBe('Invalid credentials.');
       },
     );
+  });
+
+  test('User can refresh access token with refresh token', ({
+    given,
+    when,
+    then,
+  }) => {
+    given('I have a valid refresh token', async () => {
+      expect(refreshToken).toBeDefined();
+    });
+
+    when('I send a refresh token request', async () => {
+      response = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken });
+    });
+
+    then('I should receive a new access token and refresh token', () => {
+      expect(response.status).toBe(200);
+      expect(response.body.accessToken).toBeDefined();
+      expect(response.body.refreshToken).toBeDefined();
+    });
   });
 });

@@ -1,5 +1,6 @@
 import { UserService } from 'src/user/user.service';
 
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -21,6 +22,7 @@ describe('AuthController', () => {
         AuthService,
         JwtService,
         { provide: UserService, useValue: mockUserService },
+        { provide: CACHE_MANAGER, useValue: {} },
       ],
     }).compile();
 

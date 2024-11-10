@@ -1,3 +1,4 @@
+import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -34,6 +35,7 @@ import { UserModule } from './user/user.module';
         }
       },
     }),
+    CacheModule.register({ isGlobal: true }),
     UserModule,
   ],
   controllers: [AppController],

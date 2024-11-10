@@ -23,10 +23,31 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginUserDto: LoginUserDto) {
-    const token = await this.authService.login(loginUserDto);
-    if (!token) {
-      throw new HttpException('Invalid credentials.', HttpStatus.BAD_REQUEST);
+    const { accessToken, refreshToken } =
+      await this.authService.login(loginUserDto);
+
+    if (!accessToken || !refreshToken) {
+      throw new HttpException('Invalid credentials.', HttpStatus.UNAUTHORIZED);
     }
-    return { token };
+
+    return { accessToken, refreshToken };
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  async refreshToken(@Body() body: { refreshToken: string }) {
+    const { refreshToken } = body;
+
+    const newTokens = await this.authService.refresh(refreshToken);
+
+    return newTokens;
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  async logout(@Body() body: { refreshToken: string }) {
+    const { refreshToken } = body;
+
+    return await this.authService.logout(refreshToken);
   }
 }
