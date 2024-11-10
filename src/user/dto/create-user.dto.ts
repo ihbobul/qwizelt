@@ -8,3 +8,5 @@ export class CreateUserDto {
   @MinLength(8)
   password: string;
 }
+
+export class LoginUserDto extends CreateUserDto {}
