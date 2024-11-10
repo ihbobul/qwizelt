@@ -1,6 +1,8 @@
-import { UserService } from './../user/user.service';
-import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
+
+import { BadRequestException, Injectable } from '@nestjs/common';
+
+import { UserService } from './../user/user.service';
 
 @Injectable()
 export class AuthService {

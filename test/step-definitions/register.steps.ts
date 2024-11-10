@@ -1,16 +1,14 @@
+import { defineFeature, loadFeature } from 'jest-cucumber';
+import { AppModule } from 'src/app.module';
+import { User } from 'src/user/entities/user.entity';
+import * as request from 'supertest';
+import { DataSource } from 'typeorm';
+
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
-import { defineFeature, loadFeature } from 'jest-cucumber';
-import { UserService } from 'src/user/user.service';
-import { AppModule } from 'src/app.module';
-
-const mockUserService = {
-  findByEmail: jest.fn(),
-  create: jest.fn(),
-};
 
 let app: INestApplication;
+let dataSource: DataSource;
 let response: request.Response;
 let email: string;
 let password: string;
@@ -18,17 +16,22 @@ let password: string;
 beforeAll(async () => {
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
-    providers: [{ provide: UserService, useValue: mockUserService }],
   }).compile();
 
   app = moduleFixture.createNestApplication();
   await app.init();
+
+  dataSource = app.get<DataSource>(DataSource);
 });
 
 afterAll(async () => {
   if (app) {
     await app.close();
   }
+});
+
+afterEach(async () => {
+  dataSource.getRepository(User).clear();
 });
 
 const feature = loadFeature('./test/features/register.feature');
@@ -38,9 +41,6 @@ defineFeature(feature, (test) => {
     given('I have a valid email and password', () => {
       email = 'newuser@example.com';
       password = 'securepassword';
-
-      mockUserService.findByEmail.mockResolvedValue(null);
-      mockUserService.create.mockResolvedValue({ email });
     });
 
     when('I send a registration request', async () => {
@@ -62,7 +62,7 @@ defineFeature(feature, (test) => {
       email = 'newuser@example.com';
       password = 'securepassword';
 
-      mockUserService.findByEmail.mockResolvedValue({ email });
+      await dataSource.getRepository(User).save({ email, password });
     });
 
     when('I send a registration request', async () => {

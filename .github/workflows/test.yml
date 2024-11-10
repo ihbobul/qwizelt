@@ -1,0 +1,44 @@
+name: Run Tests on Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Debug information
+        run: |
+          echo "NODE_ENV: $NODE_ENV"
+          node -v
+          npm -v
+
+      - name: Run tests
+        env:
+          NODE_ENV: test
+        run: |
+          npm run test -- --maxWorkers=2  # Running tests with Jest, use maxWorkers for parallelization
