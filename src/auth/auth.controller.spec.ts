@@ -1,5 +1,6 @@
 import { UserService } from 'src/user/user.service';
 
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AuthController } from './auth.controller';
@@ -18,6 +19,7 @@ describe('AuthController', () => {
       controllers: [AuthController],
       providers: [
         AuthService,
+        JwtService,
         { provide: UserService, useValue: mockUserService },
       ],
     }).compile();
