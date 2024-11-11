@@ -40,6 +40,10 @@ defineFeature(feature, (test) => {
       password = 'validpassword';
 
       const user = await userService.create(email, password);
+
+      expect(user).toBeDefined();
+      expect(user.id).toBeDefined();
+
       userId = user.id;
     });
 
