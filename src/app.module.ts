@@ -1,5 +1,6 @@
 import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './app.controller';
@@ -35,6 +36,7 @@ import { UserModule } from './user/user.module';
         }
       },
     }),
+    ConfigModule.forRoot(),
     CacheModule.register({ isGlobal: true }),
     UserModule,
   ],

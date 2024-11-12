@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import * as cookieParser from 'cookie-parser';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { AppModule } from 'src/app.module';
 import { AuthService } from 'src/auth/auth.service';
@@ -16,6 +17,7 @@ let email: string;
 let password: string;
 let accessToken: string;
 let refreshToken: string;
+let cookie: string;
 let userId: number;
 
 beforeAll(async () => {
@@ -24,6 +26,7 @@ beforeAll(async () => {
   }).compile();
 
   app = moduleFixture.createNestApplication();
+  app.use(cookieParser());
   await app.init();
 
   userService = app.get<UserService>(UserService);
@@ -50,13 +53,14 @@ defineFeature(feature, (test) => {
         .send({ email, password });
 
       accessToken = loginResponse.body.accessToken;
-      refreshToken = loginResponse.body.refreshToken;
+      cookie = loginResponse.header['set-cookie'][0];
+      refreshToken = cookie.split(';')[0].split('=')[1];
     });
 
     when('I send a logout request with the refresh token', async () => {
       response = await request(app.getHttpServer())
         .post('/auth/logout')
-        .send({ refreshToken });
+        .set('Cookie', cookie);
     });
 
     then(
@@ -87,7 +91,7 @@ defineFeature(feature, (test) => {
     when('I send a logout request with the invalid refresh token', async () => {
       response = await request(app.getHttpServer())
         .post('/auth/logout')
-        .send({ refreshToken });
+        .set('Cookie', `refreshToken=${refreshToken}`);
     });
 
     then(
