@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import * as cookieParser from 'cookie-parser';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { AppModule } from 'src/app.module';
 import { UserService } from 'src/user/user.service';
@@ -13,8 +14,8 @@ let response: request.Response;
 let email: string;
 let password: string;
 let accessToken: string;
-let refreshToken: string;
 let userId: number;
+let cookie: string;
 
 beforeAll(async () => {
   const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -22,6 +23,7 @@ beforeAll(async () => {
   }).compile();
 
   app = moduleFixture.createNestApplication();
+  app.use(cookieParser());
   await app.init();
 
   userService = app.get<UserService>(UserService);
@@ -40,10 +42,6 @@ defineFeature(feature, (test) => {
       password = 'validpassword';
 
       const user = await userService.create(email, password);
-
-      expect(user).toBeDefined();
-      expect(user.id).toBeDefined();
-
       userId = user.id;
     });
 
@@ -55,10 +53,14 @@ defineFeature(feature, (test) => {
 
     then('I should receive a JWT token', () => {
       expect(response.status).toBe(200);
+
       expect(response.body.accessToken).toBeDefined();
-      expect(response.body.refreshToken).toBeDefined();
+
       accessToken = response.body.accessToken;
-      refreshToken = response.body.refreshToken;
+
+      cookie = response.headers['set-cookie'];
+
+      expect(cookie).toBeDefined();
     });
 
     then('I should be able to access protected resources', async () => {
@@ -97,19 +99,20 @@ defineFeature(feature, (test) => {
     then,
   }) => {
     given('I have a valid refresh token', async () => {
-      expect(refreshToken).toBeDefined();
+      expect(cookie).toBeDefined();
     });
 
     when('I send a refresh token request', async () => {
+      const refreshToken = cookie[0].split(';')[0];
+
       response = await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({ refreshToken });
+        .set('Cookie', refreshToken);
     });
 
     then('I should receive a new access token and refresh token', () => {
       expect(response.status).toBe(200);
       expect(response.body.accessToken).toBeDefined();
-      expect(response.body.refreshToken).toBeDefined();
     });
   });
 });
