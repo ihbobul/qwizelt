@@ -43,5 +43,6 @@ jobs:
         env:
           NODE_ENV: test
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           npm run test -- --maxWorkers=2  # Running tests with Jest, use maxWorkers for parallelization
