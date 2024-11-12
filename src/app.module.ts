@@ -6,6 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { OpenaiModule } from './openai/openai.module';
+import { QuestionModule } from './question/question.module';
 import { User } from './user/entities/user.entity';
 import { UserModule } from './user/user.module';
 
@@ -36,9 +38,11 @@ import { UserModule } from './user/user.module';
         }
       },
     }),
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({}),
     CacheModule.register({ isGlobal: true }),
     UserModule,
+    OpenaiModule,
+    QuestionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
