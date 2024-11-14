@@ -1,3 +1,7 @@
+import { FileService } from 'src/file/file.service';
+import { Difficulty } from 'src/question/enum/difficulty.enum';
+import { QuestionType } from 'src/question/enum/question-type.enum';
+
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -15,6 +19,7 @@ describe('OpenaiService', () => {
       providers: [
         OpenaiService,
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: FileService, useValue: {} },
       ],
     }).compile();
 
@@ -29,7 +34,12 @@ describe('OpenaiService', () => {
     jest
       .spyOn(service, 'generateQuestions')
       .mockResolvedValue(['Mock API Question']);
-    const result = await service.generateQuestions('Sample prompt', 1);
+    const result = await service.generateQuestions(
+      'Sample prompt',
+      1,
+      QuestionType.SHORT_ANSWER,
+      Difficulty.EASY,
+    );
     expect(result).toEqual(['Mock API Question']);
   });
 });

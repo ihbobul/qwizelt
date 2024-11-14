@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { FileModule } from './file/file.module';
 import { OpenaiModule } from './openai/openai.module';
 import { QuestionModule } from './question/question.module';
 import { User } from './user/entities/user.entity';
@@ -43,6 +44,7 @@ import { UserModule } from './user/user.module';
     UserModule,
     OpenaiModule,
     QuestionModule,
+    FileModule,
   ],
   controllers: [AppController],
   providers: [AppService],
