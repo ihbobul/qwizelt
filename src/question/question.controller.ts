@@ -1,40 +1,53 @@
-import { OpenaiService } from 'src/openai/openai.service';
-
 import {
   Body,
   Controller,
+  HttpStatus,
+  ParseFilePipeBuilder,
   Post,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 
+import { fileValidatorConstants } from './constants';
 import { GenerateQuestionDto } from './dto/generate-questions.dto';
 import { QuestionService } from './question.service';
 
 @Controller('question')
 export class QuestionController {
-  constructor(
-    private readonly questionService: QuestionService,
-    private readonly openAiService: OpenaiService,
-  ) {}
+  constructor(private readonly questionService: QuestionService) {}
 
   @Post('generate')
   async generateQuestions(@Body() generateQuestionsDto: GenerateQuestionDto) {
-    return this.questionService.generateQuestions(generateQuestionsDto);
+    return this.questionService.generateQuestions(
+      generateQuestionsDto.prompt,
+      generateQuestionsDto.numberOfQuestions,
+      generateQuestionsDto.type,
+      generateQuestionsDto.difficulty,
+    );
   }
 
   @Post('generate-from-file')
   @UseInterceptors(FileInterceptor('file'))
   async generateQuestionsFromFile(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() { numberOfQuestions, type, difficulty }: GenerateQuestionDto,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: fileValidatorConstants.allowedFileTypeRegex,
+        })
+        .addMaxSizeValidator({
+          maxSize: fileValidatorConstants.allowedMaxFileSize,
+        })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
+    )
+    file: Express.Multer.File,
+    @Body() generateQuestionsDto: GenerateQuestionDto,
   ) {
-    return this.openAiService.generateQuestionsFromFile(
+    return this.questionService.generateQuestionsFromFile(
       file,
-      numberOfQuestions,
-      type,
-      difficulty,
+      generateQuestionsDto.numberOfQuestions,
+      generateQuestionsDto.type,
+      generateQuestionsDto.difficulty,
     );
   }
 }
