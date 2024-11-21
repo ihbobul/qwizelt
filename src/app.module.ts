@@ -1,6 +1,7 @@
 import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { CqrsModule } from '@nestjs/cqrs';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './app.controller';
@@ -8,6 +9,9 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { FileModule } from './file/file.module';
 import { OpenaiModule } from './openai/openai.module';
+import { Prompt } from './question/entity/prompt.entity';
+import { Question } from './question/entity/question.entity';
+import { Variant } from './question/entity/variant.entity';
 import { QuestionModule } from './question/question.module';
 import { User } from './user/entities/user.entity';
 import { UserModule } from './user/user.module';
@@ -21,7 +25,7 @@ import { UserModule } from './user/user.module';
           return {
             type: 'sqlite',
             database: ':memory:',
-            entities: [User],
+            entities: [User, Question, Prompt, Variant],
             synchronize: true,
             dropSchema: true,
           };
@@ -33,7 +37,7 @@ import { UserModule } from './user/user.module';
             username: 'postgres',
             password: 'changeme',
             database: 'qwizelt',
-            entities: [User],
+            entities: [User, Question, Prompt, Variant],
             synchronize: true,
           };
         }
@@ -45,6 +49,7 @@ import { UserModule } from './user/user.module';
     OpenaiModule,
     QuestionModule,
     FileModule,
+    CqrsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

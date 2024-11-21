@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { PromptBuilderUtil } from './util/prompt-builder.util';
 import { QuestionExampleUtil } from './util/question-example.util';
+import { QuestionParserUtil } from './util/question-parser.util';
 
 @Injectable()
 export class OpenaiService {
@@ -23,7 +24,7 @@ export class OpenaiService {
     numberOfQuestions: number,
     type: QuestionType,
     difficulty: Difficulty,
-  ): Promise<string[]> {
+  ): Promise<{ question: string; variants: string[] }[]> {
     const example = QuestionExampleUtil.generateExample(type);
 
     const openaiPrompt = PromptBuilderUtil.generateQuestionsPrompt(
@@ -50,6 +51,8 @@ export class OpenaiService {
       temperature: 0.5,
     });
 
-    return response.choices.map((choice) => choice.message?.content?.trim());
+    const responseContent = response.choices[0].message?.content?.trim();
+
+    return QuestionParserUtil.parseGeneratedQuestions(responseContent, type);
   }
 }
