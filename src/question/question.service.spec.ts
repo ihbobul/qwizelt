@@ -1,25 +1,65 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { FileService } from 'src/file/file.service';
 import { OpenaiService } from 'src/openai/openai.service';
+import { DataSource, Repository } from 'typeorm';
 
+import { QueryBus } from '@nestjs/cqrs';
 import { Test, TestingModule } from '@nestjs/testing';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 
+import { GenerateQuestionDto } from './dto/generate-questions.dto';
+import { Prompt } from './entity/prompt.entity';
+import { Question } from './entity/question.entity';
 import { Difficulty } from './enum/difficulty.enum';
 import { QuestionType } from './enum/question-type.enum';
 import { QuestionService } from './question.service';
+import { QuestionRepository } from './repository/question.repository';
 
 describe('QuestionService', () => {
   let questionService: QuestionService;
   let openaiService: OpenaiService;
   let fileService: FileService;
+  let questionRepository: QuestionRepository;
+  let promptRepository: Repository<Prompt>;
+  let queryBus: QueryBus;
 
   const mockOpenaiService = {
-    generateQuestions: jest
-      .fn()
-      .mockResolvedValue(['Mock Question 1', 'Mock Question 2']),
+    generateQuestions: jest.fn().mockResolvedValue([
+      { question: 'Mock Question 1', variants: ['Option A', 'Option B'] },
+      { question: 'Mock Question 2', variants: ['Option C', 'Option D'] },
+      { question: 'Mock Question 3', variants: ['Option E', 'Option F'] },
+    ]),
   };
 
   const mockFileService = {
-    extractText: jest.fn().mockResolvedValue('Extracted file text'),
+    extractText: jest.fn().mockResolvedValue('Sample prompt for questions'),
+  };
+
+  const mockCustomQuestionRepository = {
+    saveQuestionsWithVariants: jest.fn().mockResolvedValue([
+      { question: 'Mock Question 1', variants: ['Option A', 'Option B'] },
+      { question: 'Mock Question 2', variants: ['Option C', 'Option D'] },
+      { question: 'Mock Question 3', variants: ['Option E', 'Option F'] },
+    ]),
+  };
+
+  const mockPromptRepository = {
+    create: jest.fn().mockImplementation((entity) => ({
+      ...entity,
+      id: 1,
+    })),
+    save: jest.fn().mockResolvedValue({
+      id: 1,
+    }),
+  };
+
+  const mockQueryBus = {
+    execute: jest.fn(),
+  };
+
+  // Mock DataSource
+  const mockDataSource = {
+    getRepository: jest.fn().mockReturnValue(mockCustomQuestionRepository),
   };
 
   beforeEach(async () => {
@@ -28,12 +68,33 @@ describe('QuestionService', () => {
         QuestionService,
         { provide: OpenaiService, useValue: mockOpenaiService },
         { provide: FileService, useValue: mockFileService },
+        { provide: QueryBus, useValue: mockQueryBus },
+        {
+          provide: getRepositoryToken(Question),
+          useFactory: (dataSource: DataSource) =>
+            dataSource.getRepository(Question),
+          inject: [getDataSourceToken()],
+        },
+        {
+          provide: getDataSourceToken(),
+          useValue: mockDataSource,
+        },
+        { provide: getRepositoryToken(Prompt), useValue: mockPromptRepository },
       ],
     }).compile();
 
     questionService = module.get<QuestionService>(QuestionService);
     openaiService = module.get<OpenaiService>(OpenaiService);
     fileService = module.get<FileService>(FileService);
+    questionRepository = module.get<QuestionRepository>(
+      getRepositoryToken(Question),
+    );
+    promptRepository = module.get<Repository<Prompt>>(
+      getRepositoryToken(Prompt),
+    );
+    queryBus = module.get<QueryBus>(QueryBus);
+
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -41,43 +102,94 @@ describe('QuestionService', () => {
   });
 
   describe('generateQuestions', () => {
-    it('should call OpenaiService and return questions', async () => {
-      const result = await questionService.generateQuestions(
+    it('should call OpenaiService, save each question, and return questions', async () => {
+      const dto: GenerateQuestionDto = {
+        prompt: 'Sample prompt',
+        numberOfQuestions: 3,
+        type: QuestionType.MCQ,
+        difficulty: Difficulty.MEDIUM,
+        label: 'Test Label',
+      };
+
+      const result = await questionService.generateQuestions(dto);
+
+      expect(openaiService.generateQuestions).toHaveBeenCalledWith(
         'Sample prompt',
-        2,
+        3,
         QuestionType.MCQ,
         Difficulty.MEDIUM,
       );
 
-      expect(openaiService.generateQuestions).toHaveBeenCalledWith(
-        'Sample prompt',
-        2,
-        QuestionType.MCQ,
-        Difficulty.MEDIUM,
+      expect(mockPromptRepository.create).toHaveBeenCalledWith({
+        prompt: 'Sample prompt',
+        numberOfQuestions: 3,
+        type: QuestionType.MCQ,
+        difficulty: Difficulty.MEDIUM,
+      });
+
+      expect(
+        mockCustomQuestionRepository.saveQuestionsWithVariants,
+      ).toHaveBeenCalledWith(
+        [
+          { question: 'Mock Question 1', variants: ['Option A', 'Option B'] },
+          { question: 'Mock Question 2', variants: ['Option C', 'Option D'] },
+          { question: 'Mock Question 3', variants: ['Option E', 'Option F'] },
+        ],
+        expect.objectContaining({ id: 1 }),
+        'Test Label',
       );
-      expect(result).toEqual(['Mock Question 1', 'Mock Question 2']);
+
+      expect(result).toEqual([
+        { question: 'Mock Question 1', variants: ['Option A', 'Option B'] },
+        { question: 'Mock Question 2', variants: ['Option C', 'Option D'] },
+        { question: 'Mock Question 3', variants: ['Option E', 'Option F'] },
+      ]);
     });
-  });
 
-  describe('generateQuestionsFromFile', () => {
-    it('should extract text from the file and call OpenaiService', async () => {
-      const mockFile = {} as Express.Multer.File;
+    it('should generate questions from file and return the questions', async () => {
+      const file = {
+        buffer: Buffer.from('file content'),
+      } as Express.Multer.File;
 
-      const result = await questionService.generateQuestionsFromFile(
-        mockFile,
-        3,
-        QuestionType.SHORT_ANSWER,
-        Difficulty.HARD,
+      const dto: GenerateQuestionDto = {
+        numberOfQuestions: 3,
+        type: QuestionType.MCQ,
+        difficulty: Difficulty.MEDIUM,
+        label: 'Test Label from File',
+      };
+
+      const result = await questionService.generateQuestionsFromFile(file, dto);
+
+      expect(mockFileService.extractText).toHaveBeenCalledWith(
+        expect.objectContaining({
+          buffer: expect.any(Buffer),
+        }),
       );
 
-      expect(fileService.extractText).toHaveBeenCalledWith(mockFile);
       expect(openaiService.generateQuestions).toHaveBeenCalledWith(
-        'Extracted file text',
+        'Sample prompt for questions',
         3,
-        QuestionType.SHORT_ANSWER,
-        Difficulty.HARD,
+        QuestionType.MCQ,
+        Difficulty.MEDIUM,
       );
-      expect(result).toEqual(['Mock Question 1', 'Mock Question 2']);
+
+      expect(
+        mockCustomQuestionRepository.saveQuestionsWithVariants,
+      ).toHaveBeenCalledWith(
+        [
+          { question: 'Mock Question 1', variants: ['Option A', 'Option B'] },
+          { question: 'Mock Question 2', variants: ['Option C', 'Option D'] },
+          { question: 'Mock Question 3', variants: ['Option E', 'Option F'] },
+        ],
+        expect.objectContaining({ id: 1 }),
+        'Test Label from File',
+      );
+
+      expect(result).toEqual([
+        { question: 'Mock Question 1', variants: ['Option A', 'Option B'] },
+        { question: 'Mock Question 2', variants: ['Option C', 'Option D'] },
+        { question: 'Mock Question 3', variants: ['Option E', 'Option F'] },
+      ]);
     });
   });
 });

@@ -7,7 +7,7 @@ import { QuestionType } from '../enum/question-type.enum';
 export class GenerateQuestionDto {
   @IsOptional()
   @IsString()
-  prompt: string;
+  prompt?: string;
 
   @IsNumber()
   @Min(1)
@@ -19,4 +19,8 @@ export class GenerateQuestionDto {
 
   @IsEnum(Difficulty)
   difficulty: Difficulty;
+
+  @IsOptional()
+  @IsString()
+  label: string;
 }

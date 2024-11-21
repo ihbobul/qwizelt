@@ -16,7 +16,7 @@ export class QuestionExampleUtil {
 
   private static generateQuestionWithMultipleChoiceAnswerExample(): string {
     return `
-    Question: What is the capital of France?
+    What is the capital of France?
     A) Berlin
     B) Madrid
     C) Paris
@@ -26,7 +26,7 @@ export class QuestionExampleUtil {
 
   private static generateQuestionWithTrueOrFalseAnswerExample(): string {
     return `
-    Statement: The Earth is flat.
+    The Earth is flat.
     A) True
     B) False
     `;
@@ -34,7 +34,7 @@ export class QuestionExampleUtil {
 
   private static generateQuestionWithShortAnswerExample(): string {
     return `
-    Question: Who was the first President of the United States?
+    Who was the first President of the United States?
     `;
   }
 }

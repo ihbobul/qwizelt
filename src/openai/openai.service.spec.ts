@@ -33,13 +33,19 @@ describe('OpenaiService', () => {
   it('should return mock questions without calling OpenAI API', async () => {
     jest
       .spyOn(service, 'generateQuestions')
-      .mockResolvedValue(['Mock API Question']);
+      .mockResolvedValue([
+        { question: 'Mock API Question', variants: ['Option A', 'Option B'] },
+      ]);
+
     const result = await service.generateQuestions(
       'Sample prompt',
       1,
       QuestionType.SHORT_ANSWER,
       Difficulty.EASY,
     );
-    expect(result).toEqual(['Mock API Question']);
+
+    expect(result).toEqual([
+      { question: 'Mock API Question', variants: ['Option A', 'Option B'] },
+    ]);
   });
 });
