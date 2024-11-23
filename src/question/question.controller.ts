@@ -1,3 +1,5 @@
+import { Response } from 'express';
+
 import {
   Body,
   Controller,
@@ -10,6 +12,7 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -111,5 +114,24 @@ export class QuestionController {
     return this.questionService.regenerateSelectedQuestion(
       regenerateQuestionDto,
     );
+  }
+
+  @Get('export')
+  async exportQuestions(@Query('ids') ids: string, @Res() res: Response) {
+    const questionIds = ids.split(',').map(Number);
+    const excelBuffer =
+      await this.questionService.exportQuestionsToExcel(questionIds);
+
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="questions.xlsx"',
+    );
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+
+    res.end(excelBuffer);
   }
 }

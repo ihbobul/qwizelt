@@ -1,6 +1,7 @@
 import { FileService } from 'src/file/file.service';
 import { OpenaiService } from 'src/openai/openai.service';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+import * as XLSX from 'xlsx';
 
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
@@ -232,5 +233,76 @@ export class QuestionService {
     }
 
     return await this.questionRepository.save(question);
+  }
+
+  async exportQuestionsToExcel(questionIds: number[]): Promise<Buffer> {
+    const questions = await this.questionRepository.find({
+      where: {
+        id: In(questionIds),
+      },
+      relations: ['variants', 'prompt'],
+    });
+
+    if (!questions.length) {
+      throw new HttpException('No questions found', HttpStatus.NOT_FOUND);
+    }
+
+    const exportData = questions.map((question) => {
+      let options = [];
+      let questionType = '';
+
+      switch (question.prompt.type) {
+        case 'MULTIPLE_CHOICE_QUESTION':
+          questionType = 'Multiple Choice';
+          options = question.variants.map((variant) => variant.variant);
+          break;
+
+        case 'TRUE_OR_FALSE_QUESTION':
+          questionType = 'True/False';
+          options = ['True', 'False'];
+          break;
+
+        case 'SHORT_ANSWER_QUESTION':
+          questionType = 'Short Answer';
+          options = [];
+          break;
+
+        default:
+          questionType = 'Unknown';
+      }
+
+      return {
+        questionText: question.question,
+        questionType,
+        options,
+      };
+    });
+
+    const formattedData = exportData.map((row) => {
+      const rowData = [row.questionText, row.questionType, ...row.options];
+
+      while (rowData.length < 4) {
+        rowData.push('');
+      }
+
+      return rowData;
+    });
+
+    const headers = [
+      'Question Text',
+      'Type',
+      'Option 1',
+      'Option 2',
+      'Option 3',
+      'Option 4',
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...formattedData]);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Questions');
+
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    return excelBuffer;
   }
 }
