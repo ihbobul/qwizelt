@@ -1,7 +1,6 @@
 import { FileService } from 'src/file/file.service';
 import { OpenaiService } from 'src/openai/openai.service';
 import { In, Repository } from 'typeorm';
-import { formatQuestionsForExcel, createExcelBuffer } from './utils/excel-utils';
 
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
@@ -14,6 +13,10 @@ import { Question } from './entity/question.entity';
 import { Variant } from './entity/variant.entity';
 import { GetQuestionsQuery } from './queries/get-questions.query';
 import { QuestionRepository } from './repository/question.repository';
+import {
+  createExcelBuffer,
+  formatQuestionsForExcel,
+} from './utils/excel-format.util';
 
 @Injectable()
 export class QuestionService {
@@ -248,6 +251,7 @@ export class QuestionService {
     }
 
     const formattedData = formatQuestionsForExcel(questions);
+
     return createExcelBuffer(formattedData);
   }
 }
