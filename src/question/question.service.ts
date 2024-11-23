@@ -6,7 +6,10 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { GenerateQuestionDto } from './dto/generate-questions.dto';
+import {
+  updateQuestionText,
+  updateVariants,
+} from './utils/question-utils';
 import { RegenerateQuestionDto } from './dto/regenerate-question.dto';
 import { Prompt } from './entity/prompt.entity';
 import { Question } from './entity/question.entity';
@@ -197,45 +200,17 @@ export class QuestionService {
 
     const newQuestionData = generatedQuestions[0];
 
-    const question = await this.questionRepository.findOne({
-      where: { id: questionId },
-      relations: ['variants'],
-    });
+    const question = await updateQuestionText(
+      this.questionRepository,
+      questionId,
+      newQuestionData.question,
+    );
 
-    if (!question) {
-      throw new HttpException('Question not found', HttpStatus.NOT_FOUND);
+    if (type !== 'TRUE_OR_FALSE_QUESTION' && type !== 'SHORT_ANSWER_QUESTION') {
+      await updateVariants(this.variantRepository, question, newQuestionData.variants);
     }
 
-    question.question = newQuestionData.question;
-
-    if (type === 'TRUE_OR_FALSE_QUESTION' || type === 'SHORT_ANSWER_QUESTION') {
-      await this.questionRepository.save(question);
-      return question;
-    }
-
-    const existingVariants = question.variants;
-
-    const newVariants = newQuestionData.variants;
-
-    for (let i = 0; i < newVariants.length; i++) {
-      if (existingVariants[i]) {
-        existingVariants[i].variant = newVariants[i];
-        await this.variantRepository.save(existingVariants[i]);
-      } else {
-        const newVariant = this.variantRepository.create({
-          variant: newVariants[i],
-          question: question,
-        });
-        await this.variantRepository.save(newVariant);
-      }
-    }
-
-    if (existingVariants.length > newVariants.length) {
-      const excessVariants = existingVariants.slice(newVariants.length);
-      await this.variantRepository.remove(excessVariants);
-    }
-
-    return await this.questionRepository.save(question);
+    return question;
   }
 
   async exportQuestionsToExcel(questionIds: number[]): Promise<Buffer> {
