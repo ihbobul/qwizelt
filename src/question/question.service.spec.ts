@@ -10,6 +10,7 @@ import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { GenerateQuestionDto } from './dto/generate-questions.dto';
 import { Prompt } from './entity/prompt.entity';
 import { Question } from './entity/question.entity';
+import { Variant } from './entity/variant.entity';
 import { Difficulty } from './enum/difficulty.enum';
 import { QuestionType } from './enum/question-type.enum';
 import { QuestionService } from './question.service';
@@ -53,6 +54,11 @@ describe('QuestionService', () => {
     }),
   };
 
+  const mockVariantRepository = {
+    create: jest.fn(),
+    save: jest.fn(),
+  };
+
   const mockQueryBus = {
     execute: jest.fn(),
   };
@@ -80,6 +86,10 @@ describe('QuestionService', () => {
           useValue: mockDataSource,
         },
         { provide: getRepositoryToken(Prompt), useValue: mockPromptRepository },
+        {
+          provide: getRepositoryToken(Variant),
+          useValue: mockVariantRepository,
+        },
       ],
     }).compile();
 
