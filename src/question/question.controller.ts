@@ -1,10 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   HttpStatus,
+  Param,
   ParseFilePipeBuilder,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseInterceptors,
@@ -13,6 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 
 import { fileValidatorConstants } from './constants';
 import { GenerateQuestionDto } from './dto/generate-questions.dto';
+import { RegenerateQuestionDto } from './dto/regenerate-question.dto';
 import { Question } from './entity/question.entity';
 import { QuestionService } from './question.service';
 
@@ -59,6 +64,52 @@ export class QuestionController {
       orderBy,
       page,
       limit,
+    );
+  }
+
+  @Put('edit/:id')
+  async editQuestion(
+    @Param('id') questionId: number,
+    @Body() { newQuestionText }: { newQuestionText: string },
+  ) {
+    return this.questionService.editQuestion(questionId, newQuestionText);
+  }
+
+  @Put('variants/edit/:id')
+  async editVariant(
+    @Param('id') variantId: number,
+    @Body() { newVariantText }: { newVariantText: string },
+  ) {
+    return this.questionService.editVariant(variantId, newVariantText);
+  }
+
+  @Post('variants/add')
+  async addVariant(
+    @Body()
+    {
+      questionId,
+      newVariantText,
+    }: {
+      questionId: number;
+      newVariantText: string;
+    },
+  ) {
+    return this.questionService.addVariant(questionId, newVariantText);
+  }
+
+  @Delete('variants/remove/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeVariant(@Param('id') variantId: number) {
+    return this.questionService.removeVariant(variantId);
+  }
+
+  @Put('regenerate')
+  async regenerateQuestions(
+    @Body()
+    regenerateQuestionDto: RegenerateQuestionDto,
+  ) {
+    return this.questionService.regenerateSelectedQuestion(
+      regenerateQuestionDto,
     );
   }
 }
