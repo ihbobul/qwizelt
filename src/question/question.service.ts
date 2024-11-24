@@ -1,19 +1,18 @@
 import { FileService } from 'src/file/file.service';
 import { OpenaiService } from 'src/openai/openai.service';
+import { VariantService } from 'src/variant/variant.service';
 import { In, Repository } from 'typeorm';
 
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import {
-  updateQuestionText,
-  updateVariants,
-} from './utils/question-utils';
+import { Variant } from '../variant/entity/variant.entity';
+import { GenerateQuestionDto } from './dto/generate-questions.dto';
 import { RegenerateQuestionDto } from './dto/regenerate-question.dto';
 import { Prompt } from './entity/prompt.entity';
 import { Question } from './entity/question.entity';
-import { Variant } from './entity/variant.entity';
+import { QuestionTypeHandlerFactory } from './handler/regeneration/question-type-regeneration-factory';
 import { GetQuestionsQuery } from './queries/get-questions.query';
 import { QuestionRepository } from './repository/question.repository';
 import {
@@ -26,6 +25,7 @@ export class QuestionService {
   constructor(
     private readonly openaiService: OpenaiService,
     private readonly fileService: FileService,
+    private readonly variantService: VariantService,
     @InjectRepository(Question)
     private readonly questionRepository: QuestionRepository,
     @InjectRepository(Prompt)
@@ -33,6 +33,7 @@ export class QuestionService {
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
     private readonly queryBus: QueryBus,
+    private readonly questionTypeHandlerFactory: QuestionTypeHandlerFactory,
   ) {}
 
   async generateQuestions(generateQuestionDto: GenerateQuestionDto) {
@@ -45,6 +46,7 @@ export class QuestionService {
       type,
       difficulty,
     });
+
     const savedPrompt = await this.promptRepository.save(promptEntity);
 
     const generatedQuestions = await this.openaiService.generateQuestions(
@@ -77,6 +79,7 @@ export class QuestionService {
       type,
       difficulty,
     });
+
     const savedPrompt = await this.promptRepository.save(promptEntity);
 
     const generatedQuestions = await this.openaiService.generateQuestions(
@@ -129,20 +132,7 @@ export class QuestionService {
     variantId: number,
     newVariantText: string,
   ): Promise<Variant> {
-    const variant = await this.variantRepository.findOne({
-      where: { id: variantId },
-      relations: ['question'],
-    });
-
-    if (!variant) {
-      throw new HttpException('Variant not found', HttpStatus.NOT_FOUND);
-    }
-
-    variant.variant = newVariantText;
-
-    await this.variantRepository.save(variant);
-
-    return variant;
+    return this.variantService.editVariant(variantId, newVariantText);
   }
 
   async addVariant(
@@ -157,23 +147,11 @@ export class QuestionService {
       throw new HttpException('Question not found', HttpStatus.NOT_FOUND);
     }
 
-    const newVariant = this.variantRepository.create();
-    newVariant.variant = newVariantText;
-    newVariant.question = question;
-
-    return await this.variantRepository.save(newVariant);
+    return this.variantService.addVariant(question, newVariantText);
   }
 
   async removeVariant(variantId: number): Promise<void> {
-    const variant = await this.variantRepository.findOne({
-      where: { id: variantId },
-    });
-
-    if (!variant) {
-      throw new HttpException('Variant not found', HttpStatus.NOT_FOUND);
-    }
-
-    await this.variantRepository.remove(variant);
+    return this.variantService.removeVariant(variantId);
   }
 
   async regenerateSelectedQuestion(
@@ -197,20 +175,25 @@ export class QuestionService {
       type,
       difficulty,
     );
-
     const newQuestionData = generatedQuestions[0];
 
-    const question = await updateQuestionText(
-      this.questionRepository,
-      questionId,
-      newQuestionData.question,
-    );
+    const question = await this.questionRepository.findOne({
+      where: { id: questionId },
+      relations: ['variants'],
+    });
 
-    if (type !== 'TRUE_OR_FALSE_QUESTION' && type !== 'SHORT_ANSWER_QUESTION') {
-      await updateVariants(this.variantRepository, question, newQuestionData.variants);
+    if (!question) {
+      throw new HttpException('Question not found', HttpStatus.NOT_FOUND);
     }
 
-    return question;
+    question.question = newQuestionData.question;
+
+    const questionTypeHandler =
+      this.questionTypeHandlerFactory.createHandler(type);
+
+    await questionTypeHandler.handle(question, newQuestionData);
+
+    return this.questionRepository.save(question);
   }
 
   async exportQuestionsToExcel(questionIds: number[]): Promise<Buffer> {

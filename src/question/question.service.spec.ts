@@ -1,18 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { FileService } from 'src/file/file.service';
 import { OpenaiService } from 'src/openai/openai.service';
+import { VariantService } from 'src/variant/variant.service';
 import { DataSource, Repository } from 'typeorm';
 
 import { QueryBus } from '@nestjs/cqrs';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 
+import { Variant } from '../variant/entity/variant.entity';
 import { GenerateQuestionDto } from './dto/generate-questions.dto';
 import { Prompt } from './entity/prompt.entity';
 import { Question } from './entity/question.entity';
-import { Variant } from './entity/variant.entity';
 import { Difficulty } from './enum/difficulty.enum';
 import { QuestionType } from './enum/question-type.enum';
+import { QuestionTypeHandlerFactory } from './handler/regeneration/question-type-regeneration-factory';
 import { QuestionService } from './question.service';
 import { QuestionRepository } from './repository/question.repository';
 
@@ -68,6 +70,17 @@ describe('QuestionService', () => {
     getRepository: jest.fn().mockReturnValue(mockCustomQuestionRepository),
   };
 
+  const mockVariantService = {
+    editVariant: jest.fn(),
+    addVariant: jest.fn(),
+    removeVariant: jest.fn(),
+    updateVariants: jest.fn(),
+  };
+
+  const mockQuestionTypeHandlerFactory = {
+    getHandler: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -89,6 +102,11 @@ describe('QuestionService', () => {
         {
           provide: getRepositoryToken(Variant),
           useValue: mockVariantRepository,
+        },
+        { provide: VariantService, useValue: mockVariantService },
+        {
+          provide: QuestionTypeHandlerFactory,
+          useValue: mockQuestionTypeHandlerFactory,
         },
       ],
     }).compile();

@@ -1,7 +1,7 @@
 import { Column, Entity, JoinTable, ManyToOne } from 'typeorm';
 
-import { AbstractEntity } from './abs/abstract.entity';
-import { Question } from './question.entity';
+import { AbstractEntity } from '../../question/entity/abs/abstract.entity';
+import { Question } from '../../question/entity/question.entity';
 
 @Entity()
 export class Variant extends AbstractEntity {

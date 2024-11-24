@@ -1,5 +1,6 @@
 import { FileModule } from 'src/file/file.module';
 import { OpenaiModule } from 'src/openai/openai.module';
+import { VariantModule } from 'src/variant/variant.module';
 import { DataSource } from 'typeorm';
 
 import { Module } from '@nestjs/common';
@@ -10,9 +11,11 @@ import {
   TypeOrmModule,
 } from '@nestjs/typeorm';
 
+import { Variant } from '../variant/entity/variant.entity';
 import { Prompt } from './entity/prompt.entity';
 import { Question } from './entity/question.entity';
-import { Variant } from './entity/variant.entity';
+import { MultipleChoiceRegenerationHandler } from './handler/regeneration/multiple-choice-regeneration-handler';
+import { QuestionTypeHandlerFactory } from './handler/regeneration/question-type-regeneration-factory';
 import { GetQuestionsHandler } from './queries/handlers/get-questions.handler';
 import { QuestionController } from './question.controller';
 import { QuestionService } from './question.service';
@@ -24,6 +27,7 @@ import { customQuestionRepository } from './repository/question.repository';
     FileModule,
     CqrsModule,
     TypeOrmModule.forFeature([Prompt, Question, Variant]),
+    VariantModule,
   ],
   providers: [
     QuestionService,
@@ -34,6 +38,8 @@ import { customQuestionRepository } from './repository/question.repository';
       useFactory: (dataSource: DataSource) =>
         dataSource.getRepository(Question).extend(customQuestionRepository),
     },
+    QuestionTypeHandlerFactory,
+    MultipleChoiceRegenerationHandler,
   ],
   controllers: [QuestionController],
 })
