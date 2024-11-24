@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { GenerateQuestionDto } from './dto/generate-questions.dto';
@@ -20,7 +21,10 @@ describe('QuestionController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [QuestionController],
-      providers: [{ provide: QuestionService, useValue: mockQuestionService }],
+      providers: [
+        { provide: QuestionService, useValue: mockQuestionService },
+        { provide: Logger, useValue: {} },
+      ],
     }).compile();
 
     controller = module.get<QuestionController>(QuestionController);

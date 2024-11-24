@@ -1,5 +1,5 @@
 import { CacheModule } from '@nestjs/cache-manager';
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -11,10 +11,10 @@ import { FileModule } from './file/file.module';
 import { OpenaiModule } from './openai/openai.module';
 import { Prompt } from './question/entity/prompt.entity';
 import { Question } from './question/entity/question.entity';
-import { Variant } from './variant/entity/variant.entity';
 import { QuestionModule } from './question/question.module';
 import { User } from './user/entities/user.entity';
 import { UserModule } from './user/user.module';
+import { Variant } from './variant/entity/variant.entity';
 import { VariantModule } from './variant/variant.module';
 
 @Module({
@@ -54,6 +54,6 @@ import { VariantModule } from './variant/variant.module';
     VariantModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, Logger],
 })
 export class AppModule {}

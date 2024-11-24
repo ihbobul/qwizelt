@@ -106,6 +106,7 @@ export class AuthService {
       await this.cacheManager.del(refreshToken);
 
       return { message: 'Logout successful' };
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       throw new BadRequestException('Invalid refresh token');
     }

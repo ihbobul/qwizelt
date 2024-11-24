@@ -3,7 +3,7 @@ import { OpenaiModule } from 'src/openai/openai.module';
 import { VariantModule } from 'src/variant/variant.module';
 import { DataSource } from 'typeorm';
 
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import {
   getDataSourceToken,
@@ -40,6 +40,7 @@ import { customQuestionRepository } from './repository/question.repository';
     },
     QuestionTypeHandlerFactory,
     MultipleChoiceRegenerationHandler,
+    Logger,
   ],
   controllers: [QuestionController],
 })

@@ -1,8 +1,8 @@
 import { Repository } from 'typeorm';
 
+import { Variant } from '../../variant/entity/variant.entity';
 import { Prompt } from '../entity/prompt.entity';
 import { Question } from '../entity/question.entity';
-import { Variant } from '../../variant/entity/variant.entity';
 
 export interface QuestionRepository extends Repository<Question> {
   saveQuestionsWithVariants(
