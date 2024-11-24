@@ -1,25 +1,31 @@
 import { FileService } from 'src/file/file.service';
 import { OpenaiService } from 'src/openai/openai.service';
+import { VariantService } from 'src/variant/variant.service';
 import { In, Repository } from 'typeorm';
-import * as XLSX from 'xlsx';
 
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { Variant } from '../variant/entity/variant.entity';
 import { GenerateQuestionDto } from './dto/generate-questions.dto';
 import { RegenerateQuestionDto } from './dto/regenerate-question.dto';
 import { Prompt } from './entity/prompt.entity';
 import { Question } from './entity/question.entity';
-import { Variant } from './entity/variant.entity';
+import { QuestionTypeHandlerFactory } from './handler/regeneration/question-type-regeneration-factory';
 import { GetQuestionsQuery } from './queries/get-questions.query';
 import { QuestionRepository } from './repository/question.repository';
+import {
+  createExcelBuffer,
+  formatQuestionsForExcel,
+} from './utils/excel-format.util';
 
 @Injectable()
 export class QuestionService {
   constructor(
     private readonly openaiService: OpenaiService,
     private readonly fileService: FileService,
+    private readonly variantService: VariantService,
     @InjectRepository(Question)
     private readonly questionRepository: QuestionRepository,
     @InjectRepository(Prompt)
@@ -27,6 +33,7 @@ export class QuestionService {
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
     private readonly queryBus: QueryBus,
+    private readonly questionTypeHandlerFactory: QuestionTypeHandlerFactory,
   ) {}
 
   async generateQuestions(generateQuestionDto: GenerateQuestionDto) {
@@ -39,6 +46,7 @@ export class QuestionService {
       type,
       difficulty,
     });
+
     const savedPrompt = await this.promptRepository.save(promptEntity);
 
     const generatedQuestions = await this.openaiService.generateQuestions(
@@ -71,6 +79,7 @@ export class QuestionService {
       type,
       difficulty,
     });
+
     const savedPrompt = await this.promptRepository.save(promptEntity);
 
     const generatedQuestions = await this.openaiService.generateQuestions(
@@ -123,20 +132,7 @@ export class QuestionService {
     variantId: number,
     newVariantText: string,
   ): Promise<Variant> {
-    const variant = await this.variantRepository.findOne({
-      where: { id: variantId },
-      relations: ['question'],
-    });
-
-    if (!variant) {
-      throw new HttpException('Variant not found', HttpStatus.NOT_FOUND);
-    }
-
-    variant.variant = newVariantText;
-
-    await this.variantRepository.save(variant);
-
-    return variant;
+    return this.variantService.editVariant(variantId, newVariantText);
   }
 
   async addVariant(
@@ -151,23 +147,11 @@ export class QuestionService {
       throw new HttpException('Question not found', HttpStatus.NOT_FOUND);
     }
 
-    const newVariant = this.variantRepository.create();
-    newVariant.variant = newVariantText;
-    newVariant.question = question;
-
-    return await this.variantRepository.save(newVariant);
+    return this.variantService.addVariant(question, newVariantText);
   }
 
   async removeVariant(variantId: number): Promise<void> {
-    const variant = await this.variantRepository.findOne({
-      where: { id: variantId },
-    });
-
-    if (!variant) {
-      throw new HttpException('Variant not found', HttpStatus.NOT_FOUND);
-    }
-
-    await this.variantRepository.remove(variant);
+    return this.variantService.removeVariant(variantId);
   }
 
   async regenerateSelectedQuestion(
@@ -191,7 +175,6 @@ export class QuestionService {
       type,
       difficulty,
     );
-
     const newQuestionData = generatedQuestions[0];
 
     const question = await this.questionRepository.findOne({
@@ -205,34 +188,12 @@ export class QuestionService {
 
     question.question = newQuestionData.question;
 
-    if (type === 'TRUE_OR_FALSE_QUESTION' || type === 'SHORT_ANSWER_QUESTION') {
-      await this.questionRepository.save(question);
-      return question;
-    }
+    const questionTypeHandler =
+      this.questionTypeHandlerFactory.createHandler(type);
 
-    const existingVariants = question.variants;
+    await questionTypeHandler.handle(question, newQuestionData);
 
-    const newVariants = newQuestionData.variants;
-
-    for (let i = 0; i < newVariants.length; i++) {
-      if (existingVariants[i]) {
-        existingVariants[i].variant = newVariants[i];
-        await this.variantRepository.save(existingVariants[i]);
-      } else {
-        const newVariant = this.variantRepository.create({
-          variant: newVariants[i],
-          question: question,
-        });
-        await this.variantRepository.save(newVariant);
-      }
-    }
-
-    if (existingVariants.length > newVariants.length) {
-      const excessVariants = existingVariants.slice(newVariants.length);
-      await this.variantRepository.remove(excessVariants);
-    }
-
-    return await this.questionRepository.save(question);
+    return this.questionRepository.save(question);
   }
 
   async exportQuestionsToExcel(questionIds: number[]): Promise<Buffer> {
@@ -247,62 +208,8 @@ export class QuestionService {
       throw new HttpException('No questions found', HttpStatus.NOT_FOUND);
     }
 
-    const exportData = questions.map((question) => {
-      let options = [];
-      let questionType = '';
+    const formattedData = formatQuestionsForExcel(questions);
 
-      switch (question.prompt.type) {
-        case 'MULTIPLE_CHOICE_QUESTION':
-          questionType = 'Multiple Choice';
-          options = question.variants.map((variant) => variant.variant);
-          break;
-
-        case 'TRUE_OR_FALSE_QUESTION':
-          questionType = 'True/False';
-          options = ['True', 'False'];
-          break;
-
-        case 'SHORT_ANSWER_QUESTION':
-          questionType = 'Short Answer';
-          options = [];
-          break;
-
-        default:
-          questionType = 'Unknown';
-      }
-
-      return {
-        questionText: question.question,
-        questionType,
-        options,
-      };
-    });
-
-    const formattedData = exportData.map((row) => {
-      const rowData = [row.questionText, row.questionType, ...row.options];
-
-      while (rowData.length < 4) {
-        rowData.push('');
-      }
-
-      return rowData;
-    });
-
-    const headers = [
-      'Question Text',
-      'Type',
-      'Option 1',
-      'Option 2',
-      'Option 3',
-      'Option 4',
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...formattedData]);
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Questions');
-
-    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
-    return excelBuffer;
+    return createExcelBuffer(formattedData);
   }
 }

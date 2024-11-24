@@ -11,10 +11,11 @@ import { FileModule } from './file/file.module';
 import { OpenaiModule } from './openai/openai.module';
 import { Prompt } from './question/entity/prompt.entity';
 import { Question } from './question/entity/question.entity';
-import { Variant } from './question/entity/variant.entity';
+import { Variant } from './variant/entity/variant.entity';
 import { QuestionModule } from './question/question.module';
 import { User } from './user/entities/user.entity';
 import { UserModule } from './user/user.module';
+import { VariantModule } from './variant/variant.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { UserModule } from './user/user.module';
     QuestionModule,
     FileModule,
     CqrsModule,
+    VariantModule,
   ],
   controllers: [AppController],
   providers: [AppService],
