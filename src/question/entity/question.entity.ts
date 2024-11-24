@@ -1,8 +1,8 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
+import { Variant } from '../../variant/entity/variant.entity';
 import { AbstractEntity } from './abs/abstract.entity';
 import { Prompt } from './prompt.entity';
-import { Variant } from '../../variant/entity/variant.entity';
 
 @Entity()
 export class Question extends AbstractEntity {

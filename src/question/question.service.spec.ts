@@ -4,6 +4,7 @@ import { OpenaiService } from 'src/openai/openai.service';
 import { VariantService } from 'src/variant/variant.service';
 import { DataSource, Repository } from 'typeorm';
 
+import { Logger } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
@@ -107,6 +108,15 @@ describe('QuestionService', () => {
         {
           provide: QuestionTypeHandlerFactory,
           useValue: mockQuestionTypeHandlerFactory,
+        },
+        {
+          provide: Logger,
+          useValue: {
+            log: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn(),
+            debug: jest.fn(),
+          },
         },
       ],
     }).compile();
