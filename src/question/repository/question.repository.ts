@@ -8,7 +8,7 @@ export interface QuestionRepository extends Repository<Question> {
   saveQuestionsWithVariants(
     questions: { question: string; variants: string[] }[],
     prompt: Prompt,
-    label: string,
+    label?: string,
   ): Promise<Question[]>;
 }
 
@@ -16,14 +16,14 @@ export const customQuestionRepository: Pick<QuestionRepository, any> = {
   async saveQuestionsWithVariants(
     questions: { question: string; variants: string[] }[],
     prompt: Prompt,
-    label: string,
+    label?: string,
   ): Promise<Question[]> {
     const savedQuestions = [];
     for (const { question, variants } of questions) {
       const questionEntity = this.create({
         question,
         prompt,
-        label,
+        label: label || 'Default',
       });
 
       const savedQuestion = await this.save(questionEntity);
