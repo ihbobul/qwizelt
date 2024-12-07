@@ -1,4 +1,5 @@
 import { FileService } from 'src/file/file.service';
+import { LabelService } from 'src/label/label.service';
 import { OpenaiService } from 'src/openai/openai.service';
 import { VariantService } from 'src/variant/variant.service';
 import { In, Repository } from 'typeorm';
@@ -26,6 +27,7 @@ export class QuestionService {
     private readonly openaiService: OpenaiService,
     private readonly fileService: FileService,
     private readonly variantService: VariantService,
+    private readonly labelService: LabelService,
     @InjectRepository(Question)
     private readonly questionRepository: QuestionRepository,
     @InjectRepository(Prompt)
@@ -36,12 +38,10 @@ export class QuestionService {
   ) {}
 
   async generateQuestions(generateQuestionDto: GenerateQuestionDto) {
-    const { prompt, numberOfQuestions, type, difficulty, label } =
+    const { prompt, numberOfQuestions, type, difficulty, labels } =
       generateQuestionDto;
 
-    this.logger.log(
-      `Generating questions with prompt: "${prompt}". With label: ${label}`,
-    );
+    this.logger.log(`Generating questions with prompt: "${prompt}"`);
 
     try {
       this.logger.debug('Creating prompt entity...');
@@ -62,6 +62,7 @@ export class QuestionService {
         type,
         difficulty,
       );
+
       this.logger.debug(
         `Generated ${generatedQuestions.length} questions successfully`,
       );
@@ -69,13 +70,30 @@ export class QuestionService {
       this.logger.debug(
         'Saving generated questions and variants to the database...',
       );
-      await this.questionRepository.saveQuestionsWithVariants(
-        generatedQuestions,
-        savedPrompt,
-        label,
-      );
+
+      const savedQuestions =
+        await this.questionRepository.saveQuestionsWithVariants(
+          generatedQuestions,
+          savedPrompt,
+        );
 
       this.logger.log('Questions generated and saved successfully');
+
+      if (labels.length) {
+        this.logger.debug('Creating labels for the generated questions...');
+
+        for (const question of savedQuestions) {
+          for (const label of labels) {
+            this.logger.debug(
+              `Creating label: ${label} for question ID: ${question.id}`,
+            );
+            await this.labelService.createLabel(label, question);
+          }
+        }
+
+        this.logger.debug('Labels created successfully');
+      }
+
       return generatedQuestions;
     } catch (error) {
       this.logger.error('Failed to generate questions', {
@@ -95,18 +113,19 @@ export class QuestionService {
     file: Express.Multer.File,
     generateQuestionDto: GenerateQuestionDto,
   ): Promise<any> {
-    const { numberOfQuestions, type, difficulty, label } = generateQuestionDto;
+    const { numberOfQuestions, type, difficulty, labels } = generateQuestionDto;
 
-    this.logger.log(
-      `Generating questions from file: ${file.originalname}. With label: ${label}`,
-    );
+    this.logger.log(`Generating questions from file: ${file.originalname}`);
 
     try {
       this.logger.debug('Extracting text from the uploaded file...');
+
       const text = await this.fileService.extractText(file);
+
       this.logger.debug('File text extracted successfully');
 
       this.logger.debug('Creating prompt entity...');
+
       const promptEntity = this.promptRepository.create({
         prompt: text,
         numberOfQuestions,
@@ -114,24 +133,44 @@ export class QuestionService {
         difficulty,
       });
       const savedPrompt = await this.promptRepository.save(promptEntity);
+
       this.logger.debug(`Prompt entity saved with ID: ${savedPrompt.id}`);
 
       this.logger.debug('Generating questions using OpenAI...');
+
       const generatedQuestions = await this.openaiService.generateQuestions(
         text,
         numberOfQuestions,
         type,
         difficulty,
       );
+
       this.logger.debug(`Generated ${generatedQuestions.length} questions`);
 
       this.logger.debug('Saving generated questions to the database...');
-      await this.questionRepository.saveQuestionsWithVariants(
-        generatedQuestions,
-        savedPrompt,
-        label,
-      );
+
+      const savedQuestions =
+        await this.questionRepository.saveQuestionsWithVariants(
+          generatedQuestions,
+          savedPrompt,
+        );
+
       this.logger.log('Questions successfully generated and saved');
+
+      if (labels.length) {
+        this.logger.debug('Creating labels for the generated questions...');
+
+        for (const question of savedQuestions) {
+          for (const label of labels) {
+            this.logger.debug(
+              `Creating label: ${label} for question ID: ${question.id}`,
+            );
+            await this.labelService.createLabel(label, question);
+          }
+        }
+
+        this.logger.debug('Labels created successfully');
+      }
 
       return generatedQuestions;
     } catch (error) {
@@ -158,9 +197,11 @@ export class QuestionService {
 
     try {
       const query = new GetQuestionsQuery(label, orderBy, page, limit);
+
       this.logger.debug(`Executing query: ${JSON.stringify(query)}`);
 
       const result = await this.queryBus.execute(query);
+
       this.logger.log(`Successfully fetched questions for label: "${label}"`);
 
       return result;
@@ -186,6 +227,7 @@ export class QuestionService {
 
     try {
       this.logger.debug(`Fetching question with ID: ${questionId}`);
+
       const question = await this.questionRepository.findOne({
         where: { id: questionId },
         relations: ['variants'],
@@ -433,6 +475,66 @@ export class QuestionService {
 
       throw new HttpException(
         'Error exporting questions to Excel. Please try again later.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async getAllQuestionsWithDetails(): Promise<any> {
+    const questions = await this.questionRepository
+      .createQueryBuilder('question')
+      .leftJoinAndSelect('question.variants', 'variant') // Join variants
+      .leftJoinAndSelect('question.prompt', 'prompt') // Join prompts
+      .leftJoinAndSelect('question.labels', 'label') // Join labels
+      .select([
+        'question.id',
+        'question.question', // Question fields
+        'variant.id',
+        'variant.variant', // Variant fields
+        'prompt.id',
+        'prompt.prompt', // Prompt fields
+        'prompt.type',
+        'prompt.difficulty',
+        'label.id',
+        'label.label', // Label fields
+      ])
+      .getMany();
+
+    return questions.map((question) => ({
+      id: question.id,
+      createdAt: question.createdAt,
+      question: question.question,
+      prompt: {
+        id: question.prompt.id,
+        createdAt: question.prompt.createdAt,
+        prompt: question.prompt.prompt,
+        type: question.prompt.type,
+        difficulty: question.prompt.difficulty,
+      },
+      variants: question.variants.map((variant) => ({
+        id: variant.id,
+        variant: variant.variant,
+      })),
+      labels: question.labels.map((label) => label.label),
+    }));
+  }
+
+  async removeQuestion(questionId: number): Promise<void> {
+    this.logger.log(`Removing question with ID: ${questionId}`);
+
+    try {
+      await this.questionRepository.delete({ id: questionId });
+
+      this.logger.log(`Successfully removed question with ID: ${questionId}`);
+    } catch (error) {
+      this.logger.error(`Failed to remove question with ID: ${questionId}`, {
+        error: error.message,
+        stack: error.stack,
+        questionId,
+      });
+
+      throw new HttpException(
+        'Error removing question. Please try again later.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

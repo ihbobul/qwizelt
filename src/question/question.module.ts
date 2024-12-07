@@ -1,4 +1,6 @@
 import { FileModule } from 'src/file/file.module';
+import { Label } from 'src/label/entity/label.entity';
+import { LabelModule } from 'src/label/label.module';
 import { OpenaiModule } from 'src/openai/openai.module';
 import { VariantModule } from 'src/variant/variant.module';
 import { DataSource } from 'typeorm';
@@ -26,8 +28,9 @@ import { customQuestionRepository } from './repository/question.repository';
     OpenaiModule,
     FileModule,
     CqrsModule,
-    TypeOrmModule.forFeature([Prompt, Question, Variant]),
+    TypeOrmModule.forFeature([Prompt, Question, Variant, Label]),
     VariantModule,
+    LabelModule,
   ],
   providers: [
     QuestionService,
