@@ -21,6 +21,6 @@ export class GenerateQuestionDto {
   difficulty: Difficulty;
 
   @IsOptional()
-  @IsString()
-  label: string;
+  @IsString({ each: true })
+  labels: string[];
 }

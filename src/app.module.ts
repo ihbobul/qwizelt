@@ -8,6 +8,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { FileModule } from './file/file.module';
+import { Label } from './label/entity/label.entity';
+import { LabelModule } from './label/label.module';
 import { OpenaiModule } from './openai/openai.module';
 import { Prompt } from './question/entity/prompt.entity';
 import { Question } from './question/entity/question.entity';
@@ -26,7 +28,7 @@ import { VariantModule } from './variant/variant.module';
           return {
             type: 'sqlite',
             database: ':memory:',
-            entities: [User, Question, Prompt, Variant],
+            entities: [User, Question, Prompt, Variant, Label],
             synchronize: true,
             dropSchema: true,
           };
@@ -38,7 +40,7 @@ import { VariantModule } from './variant/variant.module';
             username: 'postgres',
             password: 'changeme',
             database: 'qwizelt',
-            entities: [User, Question, Prompt, Variant],
+            entities: [User, Question, Prompt, Variant, Label],
             synchronize: true,
           };
         }
@@ -52,6 +54,7 @@ import { VariantModule } from './variant/variant.module';
     FileModule,
     CqrsModule,
     VariantModule,
+    LabelModule,
   ],
   controllers: [AppController],
   providers: [AppService, Logger],

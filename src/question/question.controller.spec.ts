@@ -38,7 +38,7 @@ describe('QuestionController', () => {
   it('should call generateQuestions and return mock questions', async () => {
     const generateQuestionsDto: GenerateQuestionDto = {
       prompt: 'Sample prompt',
-      label: 'Test Label',
+      labels: ['Test Label'],
       numberOfQuestions: 1,
       type: QuestionType.SHORT_ANSWER,
       difficulty: Difficulty.EASY,
@@ -60,7 +60,7 @@ describe('QuestionController', () => {
 
     const generateQuestionsDto: GenerateQuestionDto = {
       prompt: 'Sample prompt',
-      label: 'Test Label',
+      labels: ['Test Label'],
       numberOfQuestions: 1,
       type: QuestionType.SHORT_ANSWER,
       difficulty: Difficulty.EASY,

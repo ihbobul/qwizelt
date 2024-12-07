@@ -28,6 +28,11 @@ import { QuestionService } from './question.service';
 export class QuestionController {
   constructor(private readonly questionService: QuestionService) {}
 
+  @Get()
+  async getAllQuestionsWithDetails(): Promise<any> {
+    return this.questionService.getAllQuestionsWithDetails();
+  }
+
   @Post('generate')
   async generateQuestions(@Body() generateQuestionsDto: GenerateQuestionDto) {
     return this.questionService.generateQuestions(generateQuestionsDto);
@@ -133,5 +138,11 @@ export class QuestionController {
     );
 
     res.end(excelBuffer);
+  }
+
+  @Delete('remove/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeQuestion(@Param('id') questionId: number) {
+    return this.questionService.removeQuestion(questionId);
   }
 }
