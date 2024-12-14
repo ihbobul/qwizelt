@@ -12,6 +12,8 @@ let dataSource: DataSource;
 let response: request.Response;
 let email: string;
 let password: string;
+let firstName: string;
+let lastName: string;
 
 beforeAll(async () => {
   const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -39,14 +41,14 @@ const feature = loadFeature('./test/features/register.feature');
 defineFeature(feature, (test) => {
   test('Successful Registration', ({ given, when, then }) => {
     given('I have a valid email and password', () => {
-      email = 'newuser@example.com';
-      password = 'securepassword';
+      email = 'validuser@example.com';
+      password = 'validpassword';
     });
 
     when('I send a registration request', async () => {
       response = await request(app.getHttpServer())
         .post('/auth/register')
-        .send({ email, password });
+        .send({ email, password, firstName: 'Valid', lastName: 'User' });
     });
 
     then('I should receive a confirmation response', () => {
@@ -61,14 +63,18 @@ defineFeature(feature, (test) => {
     given('I have an email that is already registered', async () => {
       email = 'newuser@example.com';
       password = 'securepassword';
+      firstName = 'New';
+      lastName = 'User';
 
-      await dataSource.getRepository(User).save({ email, password });
+      await dataSource
+        .getRepository(User)
+        .save({ email, password, firstName, lastName });
     });
 
     when('I send a registration request', async () => {
       response = await request(app.getHttpServer())
         .post('/auth/register')
-        .send({ email, password });
+        .send({ email, password, firstName, lastName });
     });
 
     then(

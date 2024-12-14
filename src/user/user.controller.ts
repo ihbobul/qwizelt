@@ -15,6 +15,10 @@ export class UserController {
     if (!user) {
       return 'User not found.';
     }
-    return `User with id ${id} has email: ${user.email}.`;
+    return `
+    User with id ${id} has email: ${user.email}. 
+    First name: ${user.firstName}. Last name: ${user.lastName}. 
+    Organization: ${user.organization}
+    `;
   }
 }

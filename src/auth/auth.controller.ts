@@ -1,5 +1,3 @@
-import { Request, Response } from 'express';
-
 import {
   Body,
   Controller,
@@ -7,8 +5,6 @@ import {
   HttpException,
   HttpStatus,
   Post,
-  Req,
-  Res,
 } from '@nestjs/common';
 
 import { CreateUserDto, LoginUserDto } from '../user/dto/create-user.dto';
@@ -18,13 +14,6 @@ import { AuthService } from './auth.service';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  private setRefreshTokenCookie(res: Response, refreshToken: string) {
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-  }
-
   @Post('register')
   @HttpCode(201)
   async register(@Body() createUserDto: CreateUserDto) {
@@ -33,10 +22,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() loginUserDto: LoginUserDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async login(@Body() loginUserDto: LoginUserDto) {
     const { accessToken, refreshToken } =
       await this.authService.login(loginUserDto);
 
@@ -44,18 +30,13 @@ export class AuthController {
       throw new HttpException('Invalid credentials.', HttpStatus.UNAUTHORIZED);
     }
 
-    this.setRefreshTokenCookie(res, refreshToken);
-
-    return { accessToken };
+    return { accessToken, refreshToken };
   }
 
   @Post('refresh')
   @HttpCode(200)
-  async refreshToken(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const { refreshToken } = req.cookies;
+  async refreshToken(@Body() body: { refreshToken: string }) {
+    const { refreshToken } = body;
 
     if (!refreshToken) {
       throw new HttpException(
@@ -66,15 +47,16 @@ export class AuthController {
 
     const newTokens = await this.authService.refresh(refreshToken);
 
-    this.setRefreshTokenCookie(res, newTokens.refreshToken);
-
-    return { accessToken: newTokens.accessToken };
+    return {
+      accessToken: newTokens.accessToken,
+      refreshToken: newTokens.refreshToken,
+    };
   }
 
   @Post('logout')
   @HttpCode(200)
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const { refreshToken } = req.cookies;
+  async logout(@Body() body: { refreshToken: string }) {
+    const { refreshToken } = body;
 
     if (!refreshToken) {
       throw new HttpException(
@@ -84,8 +66,6 @@ export class AuthController {
     }
 
     const message = await this.authService.logout(refreshToken);
-
-    res.clearCookie('refreshToken');
 
     return message;
   }
