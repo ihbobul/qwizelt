@@ -17,15 +17,13 @@ export class AuthService {
   ) {}
 
   async register(createUserDto: CreateUserDto) {
-    const { email, password } = createUserDto;
-
-    const userExists = await this.userService.findByEmail(email);
+    const userExists = await this.userService.findByEmail(createUserDto.email);
 
     if (userExists) {
       throw new BadRequestException('Email already in use.');
     }
 
-    await this.userService.create(email, password);
+    await this.userService.create(createUserDto);
 
     return {
       message: 'User registered successfully!',
@@ -36,10 +34,22 @@ export class AuthService {
     const user = await this.userService.findByEmail(loginUserDto.email);
 
     if (user && (await bcrypt.compare(loginUserDto.password, user.password))) {
-      const { id, email } = user;
+      const { id, email, firstName, lastName, organization } = user;
 
-      const accessToken = this.generateAccessToken(id, email);
-      const refreshToken = this.generateRefreshToken(id, email);
+      const accessToken = this.generateAccessToken(
+        id,
+        email,
+        firstName,
+        lastName,
+        organization,
+      );
+      const refreshToken = this.generateRefreshToken(
+        id,
+        email,
+        firstName,
+        lastName,
+        organization,
+      );
 
       const tokenExpiration = this.jwtService.decode(refreshToken)['exp'];
       const ttlInMilliseconds = tokenExpiration - Math.floor(Date.now() / 1000);
@@ -53,13 +63,37 @@ export class AuthService {
     }
   }
 
-  private generateAccessToken(userId: number, username: string): string {
-    const payload = { sub: userId, username };
+  private generateAccessToken(
+    userId: number,
+    username: string,
+    firstName: string,
+    lastName: string,
+    organization?: string,
+  ): string {
+    const payload = {
+      sub: userId,
+      username,
+      firstName,
+      lastName,
+      organization,
+    };
     return this.jwtService.sign(payload);
   }
 
-  private generateRefreshToken(userId: number, username: string): string {
-    const payload = { sub: userId, username };
+  private generateRefreshToken(
+    userId: number,
+    username: string,
+    firstName: string,
+    lastName: string,
+    organization?: string,
+  ): string {
+    const payload = {
+      sub: userId,
+      username,
+      firstName,
+      lastName,
+      organization,
+    };
     return this.jwtService.sign(payload, { expiresIn: '7d' });
   }
 
@@ -72,10 +106,28 @@ export class AuthService {
 
     try {
       const decoded = this.jwtService.verify(refreshToken);
-      const { sub: userId, username } = decoded;
+      const {
+        sub: userId,
+        username,
+        firstName,
+        lastName,
+        organization,
+      } = decoded;
 
-      const accessToken = this.generateAccessToken(userId, username);
-      const newRefreshToken = this.generateRefreshToken(userId, username);
+      const accessToken = this.generateAccessToken(
+        userId,
+        username,
+        firstName,
+        lastName,
+        organization,
+      );
+      const newRefreshToken = this.generateRefreshToken(
+        userId,
+        username,
+        firstName,
+        lastName,
+        organization,
+      );
 
       const tokenExpiration = this.jwtService.decode(newRefreshToken)['exp'];
       const ttlInMilliseconds = tokenExpiration - Math.floor(Date.now() / 1000);

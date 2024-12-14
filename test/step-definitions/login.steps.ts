@@ -2,6 +2,7 @@
 import * as cookieParser from 'cookie-parser';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { AppModule } from 'src/app.module';
+import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { UserService } from 'src/user/user.service';
 import * as request from 'supertest';
 
@@ -14,8 +15,8 @@ let response: request.Response;
 let email: string;
 let password: string;
 let accessToken: string;
+let refreshToken: string;
 let userId: number;
-let cookie: string;
 
 beforeAll(async () => {
   const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -38,11 +39,19 @@ const feature = loadFeature('./test/features/login.feature');
 defineFeature(feature, (test) => {
   test('User login with valid credentials', ({ given, when, then }) => {
     given('I have valid credentials', async () => {
-      email = 'validuser@example.com';
-      password = 'validpassword';
+      const createUserDto: CreateUserDto = {
+        email: 'validuser@example.com',
+        password: 'validpassword',
+        firstName: 'Valid',
+        lastName: 'User',
+      };
 
-      const user = await userService.create(email, password);
+      const user = await userService.create(createUserDto);
+
       userId = user.id;
+
+      email = createUserDto.email;
+      password = createUserDto.password;
     });
 
     when('I send a login request with those credentials', async () => {
@@ -55,12 +64,10 @@ defineFeature(feature, (test) => {
       expect(response.status).toBe(200);
 
       expect(response.body.accessToken).toBeDefined();
+      expect(response.body.refreshToken).toBeDefined();
 
+      refreshToken = response.body.refreshToken;
       accessToken = response.body.accessToken;
-
-      cookie = response.headers['set-cookie'];
-
-      expect(cookie).toBeDefined();
     });
 
     then('I should be able to access protected resources', async () => {
@@ -99,15 +106,13 @@ defineFeature(feature, (test) => {
     then,
   }) => {
     given('I have a valid refresh token', async () => {
-      expect(cookie).toBeDefined();
+      expect(refreshToken).toBeDefined();
     });
 
     when('I send a refresh token request', async () => {
-      const refreshToken = cookie[0].split(';')[0];
-
       response = await request(app.getHttpServer())
         .post('/auth/refresh')
-        .set('Cookie', refreshToken);
+        .send({ refreshToken });
     });
 
     then('I should receive a new access token and refresh token', () => {

@@ -9,5 +9,14 @@ export class User {
   email: string;
 
   @Column()
+  firstName: string;
+
+  @Column()
+  lastName: string;
+
+  @Column({ nullable: true })
+  organization: string;
+
+  @Column()
   password: string;
 }

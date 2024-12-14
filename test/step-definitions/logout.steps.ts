@@ -3,6 +3,7 @@ import * as cookieParser from 'cookie-parser';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { AppModule } from 'src/app.module';
 import { AuthService } from 'src/auth/auth.service';
+import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { UserService } from 'src/user/user.service';
 import * as request from 'supertest';
 
@@ -17,7 +18,6 @@ let email: string;
 let password: string;
 let accessToken: string;
 let refreshToken: string;
-let cookie: string;
 let userId: number;
 
 beforeAll(async () => {
@@ -42,25 +42,30 @@ const feature = loadFeature('./test/features/logout.feature');
 defineFeature(feature, (test) => {
   test('User logs out successfully', ({ given, when, then, and }) => {
     given('I have a valid refresh token', async () => {
-      email = 'validuser@example.com';
-      password = 'validpassword';
-
-      const user = await userService.create(email, password);
+      const createUserDto: CreateUserDto = {
+        email: 'validuser@example.com',
+        password: 'validpassword',
+        firstName: 'Valid',
+        lastName: 'User',
+      };
+      const user = await userService.create(createUserDto);
       userId = user.id;
+
+      email = createUserDto.email;
+      password = createUserDto.password;
 
       const loginResponse = await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email, password });
 
       accessToken = loginResponse.body.accessToken;
-      cookie = loginResponse.header['set-cookie'][0];
-      refreshToken = cookie.split(';')[0].split('=')[1];
+      refreshToken = loginResponse.body.refreshToken;
     });
 
     when('I send a logout request with the refresh token', async () => {
-      response = await request(app.getHttpServer())
-        .post('/auth/logout')
-        .set('Cookie', cookie);
+      response = await request(app.getHttpServer()).post('/auth/logout').send({
+        refreshToken,
+      });
     });
 
     then(
@@ -91,7 +96,7 @@ defineFeature(feature, (test) => {
     when('I send a logout request with the invalid refresh token', async () => {
       response = await request(app.getHttpServer())
         .post('/auth/logout')
-        .set('Cookie', `refreshToken=${refreshToken}`);
+        .send({ refreshToken });
     });
 
     then(
