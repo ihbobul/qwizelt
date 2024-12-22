@@ -35,11 +35,11 @@ import { VariantModule } from './variant/variant.module';
         } else {
           return {
             type: 'postgres',
-            host: 'localhost',
-            port: 5440,
-            username: 'postgres',
-            password: 'changeme',
-            database: 'qwizelt',
+            host: process.env.POSTGRES_HOST,
+            port: +process.env.POSTGRES_PORT,
+            username: process.env.POSTGRES_USER,
+            password: process.env.POSTGRES_PASSWORD,
+            database: process.env.POSTGRES_DB,
             entities: [User, Question, Prompt, Variant, Label],
             synchronize: true,
           };
