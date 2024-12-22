@@ -31,7 +31,7 @@
     "@nestjs/typeorm": "^10.0.2",
     "@types/cookie-parser": "^1.4.7",
     "@typescript-eslint/parser": "^8.13.0",
-    "axios": "^1.7.7",
+    "axios": "^1.7.9",
     "bcrypt": "^5.1.1",
     "cache-manager": "^5.7.6",
     "class-transformer": "^0.5.1",
