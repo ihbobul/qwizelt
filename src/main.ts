@@ -10,11 +10,13 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  app.enableCors({ credentials: true, origin: 'http://localhost:3000' });
+  app.enableCors({ credentials: true, origin: 'https://frontend.qwizelt.me' });
 
   app.useGlobalPipes(new ValidationPipe());
 
-  await app.listen(8080);
+  app.setGlobalPrefix('/v1/api');
+
+  await app.listen(3000);
 }
 
 bootstrap();

@@ -1,18 +1,23 @@
-# Use the official Node.js image.
-# https://hub.docker.com/_/node
-FROM node:18
+# Use the official Node.js 14 image as a base image
+FROM node:20.14-alpine
 
-# Create and change to the app directory.
-WORKDIR /usr/src/app
+# Set the working directory inside the container
+WORKDIR /app
 
-# Copy application dependency manifests to the container image.
+# Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
 
-# Install production dependencies.
-RUN npm install --only=production
+# Install dependencies
+RUN npm install
 
-# Copy application code.
+# Copy the rest of the application code to the working directory
 COPY . .
 
-# Run the web service on container startup.
-CMD [ "npm", "start" ]
+# Build the NestJS application
+RUN npm run build
+
+# Expose the port that the NestJS application will run on
+EXPOSE 3000
+
+# Command to run the NestJS application
+CMD ["node", "dist/src/main"]
